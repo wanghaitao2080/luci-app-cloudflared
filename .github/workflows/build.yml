@@ -3,11 +3,15 @@ name: 编译luci-app-cloudflared
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+  actions: write
+  
 jobs:
  build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@main
       - name: 下载工具链
         run: |
           sudo timedatectl set-timezone Asia/Shanghai
@@ -28,17 +32,19 @@ jobs:
           cd /opt/openwrt-sdk*/bin/packages/aarch64_generic/base
           ls
           #mv *.ipk luci-app-cloudflared_all.ipk
+          # 从 Makefile 抓取 PKG_VERSION 作为发布版本号
+          echo "pkg_version=$(awk -F':=' '/^PKG_VERSION:/{print $2; exit}' /opt/cf/luci-app-cloudflared/Makefile | tr -d '[:space:]')" >> $GITHUB_ENV
           echo "build_time=$(date '+%Y年%m月%d日%H:%M:%S' | jq -sRr @uri)" >> $GITHUB_ENV
           echo "tag=$(date '+%Y-%m-%d')" >> $GITHUB_ENV
       - name: 发布
-        uses: softprops/action-gh-release@v1
+        uses: lmq8267/action-gh-release@master
         with:
-            token: ${{ secrets.c8 }}
+            token: ${{ secrets.GITHUB_TOKEN }}
             body: |
              > ### ![](https://img.shields.io/badge/%E7%BC%96%E8%AF%91%E6%97%B6%E9%97%B4-${{ env.build_time }}-8267?logo=github&labelColor=%E9%A1%BB)![](https://img.shields.io/github/downloads/${{ github.repository }}/${{ env.tag }}/total?label=%E4%B8%8B%E8%BD%BD%E6%AC%A1%E6%95%B0&logo=github)
 
-             English：luci-app-cloudflared_En_1.0_all.ipk
-             中文版：luci-app-cloudflared_1.0_all.ipk
+             English：luci-app-cloudflared_En_${{ env.pkg_version }}_all.ipk
+             中文版：luci-app-cloudflared_${{ env.pkg_version }}_all.ipk
              
             tag_name: ${{ env.tag }}
             files: /opt/openwrt-sdk*/bin/packages/aarch64_generic/base/*
